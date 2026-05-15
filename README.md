@@ -6,7 +6,7 @@ The project analyzes transactional ordering behavior to generate actionable busi
 
 ---
 ## Live Demo
-https://restaurant-analysis-five.vercel.app/
+https://restaurant-analysis-zrtpanv9bctyngopevhu5g.streamlit.app/
 
 # Problem Statement
 
