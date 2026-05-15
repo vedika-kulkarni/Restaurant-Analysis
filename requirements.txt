@@ -1,0 +1,7 @@
+streamlit
+pdfplumber
+google-genai
+python-dotenv
+markdown
+fpdf2
+matplotlib
