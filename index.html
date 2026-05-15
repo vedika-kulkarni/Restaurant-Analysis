@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apriori — Restaurant Combo Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080f;
+    --surface: #0e101c;
+    --card: #13162a;
+    --border: #1e2240;
+    --accent: #ff4d1c;
+    --accent2: #ffb800;
+    --accent3: #00e5c3;
+    --text: #e8ecff;
+    --muted: #5a607a;
+    --pizza: #ff4d1c;
+    --burger: #ffb800;
+    --pasta: #00e5c3;
+    --sandwich: #a78bfa;
+    --coke: #f87171;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID NOISE BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,77,28,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,77,28,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HERO ── */
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 60px 60px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hero-left { max-width: 680px; }
+
+  .tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(255,77,28,0.1);
+    border: 1px solid rgba(255,77,28,0.3);
+    padding: 5px 14px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 7vw, 96px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 16px;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 400;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .stat-box {
+    text-align: right;
+  }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--accent2);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ── LAYOUT ── */
+  main {
+    position: relative;
+    z-index: 1;
+    padding: 50px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 20px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .card.accent2::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .card.accent3::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .card.purple::before  { background: linear-gradient(90deg, #a78bfa, transparent); }
+
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── SPAN HELPERS ── */
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+
+  /* ── ALGO STEPS ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+
+  .step:hover {
+    background: rgba(255,77,28,0.05);
+    border-color: rgba(255,77,28,0.3);
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1;
+    min-width: 32px;
+  }
+
+  .step-content h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .step-content p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── RULES TABLE ── */
+  .rules-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .rule-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: all 0.2s;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .rule-row:hover {
+    background: rgba(255,184,0,0.04);
+    border-color: rgba(255,184,0,0.25);
+    transform: translateX(4px);
+  }
+
+  .rule-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .rule-arrow {
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .badge-conf { background: rgba(0,229,195,0.1); color: var(--accent3); border: 1px solid rgba(0,229,195,0.2); }
+  .badge-lift { background: rgba(255,184,0,0.1); color: var(--accent2); border: 1px solid rgba(255,184,0,0.2); }
+  .badge-sup  { background: rgba(255,77,28,0.1);  color: var(--accent);  border: 1px solid rgba(255,77,28,0.2); }
+
+  /* ── ITEMSET GRID ── */
+  .itemset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .itemset-chip {
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .itemset-chip:hover {
+    border-color: var(--accent3);
+    background: rgba(0,229,195,0.05);
+  }
+
+  .chip-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .chip-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  .chip-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    transition: width 1.2s ease;
+  }
+
+  .chip-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── COMBO CARDS ── */
+  .combos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  .combo-card {
+    padding: 20px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+
+  .combo-card:hover { transform: translateY(-4px); }
+
+  .combo-card.c1 { background: linear-gradient(135deg, rgba(255,77,28,0.12), rgba(255,77,28,0.02)); border-color: rgba(255,77,28,0.3); }
+  .combo-card.c2 { background: linear-gradient(135deg, rgba(255,184,0,0.12), rgba(255,184,0,0.02)); border-color: rgba(255,184,0,0.3); }
+  .combo-card.c3 { background: linear-gradient(135deg, rgba(0,229,195,0.12), rgba(0,229,195,0.02)); border-color: rgba(0,229,195,0.3); }
+
+  .combo-emoji { font-size: 36px; margin-bottom: 10px; }
+
+  .combo-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .combo-items {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  .combo-metrics { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── BAR CHART ── */
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+
+  .bar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    width: 110px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.4s cubic-bezier(0.16,1,0.3,1);
+    display: flex;
+    align-items: center;
+    padding-right: 8px;
+    justify-content: flex-end;
+  }
+
+  .bar-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,0,0,0.7);
+    font-weight: 500;
+  }
+
+  /* ── FORMULA BOX ── */
+  .formulas { display: flex; flex-direction: column; gap: 16px; }
+
+  .formula {
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.02);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .formula.f2 { border-left-color: var(--accent2); }
+  .formula.f3 { border-left-color: var(--accent3); }
+
+  .formula-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .formula-eq {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .formula.f2 .formula-eq { color: var(--accent2); }
+  .formula.f3 .formula-eq { color: var(--accent3); }
+
+  .formula-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── PARAMS ── */
+  .params { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .param-box {
+    flex: 1;
+    min-width: 120px;
+    padding: 18px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    text-align: center;
+  }
+
+  .param-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    color: var(--accent2);
+    line-height: 1;
+  }
+
+  .param-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 24px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  footer p {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  footer span { color: var(--accent); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:nth-child(1) { animation-delay: 0.05s; }
+  .card:nth-child(2) { animation-delay: 0.1s; }
+  .card:nth-child(3) { animation-delay: 0.15s; }
+  .card:nth-child(4) { animation-delay: 0.2s; }
+  .card:nth-child(5) { animation-delay: 0.25s; }
+  .card:nth-child(6) { animation-delay: 0.3s; }
+  .card:nth-child(7) { animation-delay: 0.35s; }
+
+  /* glow dots */
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow1 { width: 500px; height: 500px; background: var(--accent);  top: -100px; left: -100px; }
+  .glow2 { width: 400px; height: 400px; background: var(--accent2); bottom: 0; right: 0; }
+  .glow3 { width: 300px; height: 300px; background: var(--accent3); top: 40%; left: 40%; }
+
+  @media (max-width: 900px) {
+    header { padding: 36px 24px 28px; }
+    main { padding: 28px 24px; grid-template-columns: 1fr 1fr; }
+    .span3 { grid-column: span 2; }
+    .combos { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    main { grid-template-columns: 1fr; }
+    .span2, .span3 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow glow1"></div>
+<div class="glow glow2"></div>
+<div class="glow glow3"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="hero-left">
+    <div class="tag">DSP Project · Market Basket Analysis</div>
+    <h1>APRIORI<br><span>COMBO</span><br>ANALYSIS</h1>
+    <p class="subtitle">Discovering hidden food combinations in restaurant orders using the Apriori association rule mining algorithm — from scratch.</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num">100</div>
+      <div class="stat-label">Orders</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">11</div>
+      <div class="stat-label">Menu Items</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">7</div>
+      <div class="stat-label">Rules Found</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">14</div>
+      <div class="stat-label">Freq. Itemsets</div>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN GRID ── -->
+<main>
+
+  <!-- CARD 1: Algorithm Steps -->
+  <div class="card" style="grid-column: span 1;">
+    <div class="card-title">⚙️ Algorithm Steps</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h4>Generate C1</h4>
+          <p>Count all single items, find frequent ones ≥ min_support</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h4>Join & Prune</h4>
+          <p>Join Lk → Ck+1, prune using anti-monotone property</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h4>Count Support</h4>
+          <p>Scan transactions, remove candidates below threshold</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <h4>Generate Rules</h4>
+          <p>From each frequent set, extract rules ≥ min_confidence</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <h4>Compute Lift</h4>
+          <p>Lift = Confidence / P(Consequent) — filters coincidences</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 2: Formulas -->
+  <div class="card accent2">
+    <div class="card-title">📐 Key Formulas</div>
+    <div class="formulas">
+      <div class="formula">
+        <div class="formula-name">Support</div>
+        <div class="formula-eq">P(A ∪ B) = count(A,B) / N</div>
+        <div class="formula-desc">How often items appear together across all transactions</div>
+      </div>
+      <div class="formula f2">
+        <div class="formula-name">Confidence</div>
+        <div class="formula-eq">P(B|A) = P(A∪B) / P(A)</div>
+        <div class="formula-desc">Given A is bought, probability that B is also bought</div>
+      </div>
+      <div class="formula f3">
+        <div class="formula-name">Lift</div>
+        <div class="formula-eq">Lift = Confidence / P(B)</div>
+        <div class="formula-desc">Lift &gt; 1 means A and B are positively correlated</div>
+      </div>
+    </div>
+    <div style="margin-top: 20px;">
+      <div class="card-title" style="margin-bottom:12px;">🎛️ Parameters Used</div>
+      <div class="params">
+        <div class="param-box">
+          <div class="param-val">15%</div>
+          <div class="param-name">Min Support</div>
+        </div>
+        <div class="param-box">
+          <div class="param-val">50%</div>
+          <div class="param-name">Min Confidence</div>
+        </div>
+        <div class="param-box">
+          <div class="param-val">1.0</div>
+          <div class="param-name">Min Lift</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 3: Item Frequency Bar -->
+  <div class="card accent3">
+    <div class="card-title">📊 Item Frequency</div>
+    <div class="bar-chart" id="barChart"></div>
+  </div>
+
+  <!-- CARD 4: Association Rules (full width) -->
+  <div class="card span3 accent2">
+    <div class="card-title">🔗 Association Rules Discovered</div>
+    <div class="rules-list" id="rulesList"></div>
+  </div>
+
+  <!-- CARD 5: Frequent Itemsets -->
+  <div class="card span2">
+    <div class="card-title">🧩 Frequent Itemsets (Support ≥ 15%)</div>
+    <div class="itemset-grid" id="itemsetGrid"></div>
+  </div>
+
+  <!-- CARD 6: Apriori Property -->
+  <div class="card purple">
+    <div class="card-title">💡 Apriori Property</div>
+    <div style="padding: 16px; background: rgba(167,139,250,0.05); border: 1px solid rgba(167,139,250,0.2); border-radius:3px; margin-bottom: 16px;">
+      <div style="font-size:13px; color:#a78bfa; font-weight:700; margin-bottom:6px;">Anti-Monotone Property</div>
+      <div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); line-height:1.7;">
+        If {Burger, Fries, Coke} is<br>
+        <span style="color:var(--accent);">INFREQUENT</span> →<br>
+        ALL its supersets are also<br>
+        <span style="color:var(--accent);">INFREQUENT</span><br><br>
+        This prunes the search space drastically — we never generate supersets of infrequent itemsets.
+      </div>
+    </div>
+    <div style="padding: 16px; background: rgba(0,229,195,0.05); border: 1px solid rgba(0,229,195,0.2); border-radius:3px;">
+      <div style="font-size:13px; color:var(--accent3); font-weight:700; margin-bottom:6px;">Why Lift Matters</div>
+      <div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); line-height:1.7;">
+        High confidence alone can be<br>misleading. Lift corrects for<br>
+        item popularity — a rule is<br>only useful if <span style="color:var(--accent3);">Lift &gt; 1</span>.
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 7: Meal Combo Recommendations (full width) -->
+  <div class="card span3" style="--card-top: var(--accent2);">
+    <div class="card-title">🍽️ Recommended Meal Combos</div>
+    <div class="combos">
+      <div class="combo-card c1">
+        <div class="combo-emoji">🍕</div>
+        <div class="combo-title" style="color:#ff6b3d;">Pizza Lover</div>
+        <div class="combo-items">Pizza + Garlic Bread<br>Strongest association found</div>
+        <div class="combo-metrics">
+          <span class="badge badge-conf">Conf: 82%</span>
+          <span class="badge badge-lift">Lift: 2.21</span>
+          <span class="badge badge-sup">Sup: 27%</span>
+        </div>
+      </div>
+      <div class="combo-card c2">
+        <div class="combo-emoji">🍔</div>
+        <div class="combo-title" style="color:#ffb800;">Burger Meal</div>
+        <div class="combo-items">Burger + Fries + Coke<br>Classic value meal combo</div>
+        <div class="combo-metrics">
+          <span class="badge badge-conf">Conf: 61%</span>
+          <span class="badge badge-lift">Lift: 1.78</span>
+          <span class="badge badge-sup">Sup: 20%</span>
+        </div>
+      </div>
+      <div class="combo-card c3">
+        <div class="combo-emoji">🥤</div>
+        <div class="combo-title" style="color:#00e5c3;">Snack Box</div>
+        <div class="combo-items">Fries + Coke<br>Popular side-drink pair</div>
+        <div class="combo-metrics">
+          <span class="badge badge-conf">Conf: 52%</span>
+          <span class="badge badge-lift">Lift: 1.47</span>
+          <span class="badge badge-sup">Sup: 17%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <p>DSP Project · <span>Apriori Algorithm</span> · Market Basket Analysis</p>
+  <p>Min Support: <span>15%</span> · Min Confidence: <span>50%</span> · Orders: <span>100</span> · Items: <span>11</span></p>
+</footer>
+
+<script>
+// ── DATA ──
+const items = [
+  { name: 'Garlic Bread', count: 37, color: '#ff4d1c' },
+  { name: 'Coke',         count: 35, color: '#ffb800' },
+  { name: 'Burger',       count: 34, color: '#00e5c3' },
+  { name: 'Fries',        count: 33, color: '#a78bfa' },
+  { name: 'Pizza',        count: 33, color: '#f87171' },
+  { name: 'Pepsi',        count: 18, color: '#60a5fa' },
+  { name: 'Milkshake',    count: 18, color: '#34d399' },
+  { name: 'Sandwich',     count: 16, color: '#fbbf24' },
+  { name: 'Pasta',        count: 15, color: '#e879f9' },
+  { name: 'Ice Cream',    count: 15, color: '#f472b6' },
+  { name: 'Lemonade',     count: 12, color: '#a3e635' },
+];
+
+const rules = [
+  { ant: 'Pizza',        cons: 'Garlic Bread', sup: 0.27, conf: 0.82, lift: 2.21 },
+  { ant: 'Garlic Bread', cons: 'Pizza',        sup: 0.27, conf: 0.73, lift: 2.21 },
+  { ant: 'Fries',        cons: 'Burger',       sup: 0.20, conf: 0.61, lift: 1.78 },
+  { ant: 'Burger',       cons: 'Fries',        sup: 0.20, conf: 0.59, lift: 1.78 },
+  { ant: 'Coke',         cons: 'Burger',       sup: 0.19, conf: 0.54, lift: 1.60 },
+  { ant: 'Burger',       cons: 'Coke',         sup: 0.19, conf: 0.56, lift: 1.60 },
+  { ant: 'Fries',        cons: 'Coke',         sup: 0.17, conf: 0.52, lift: 1.47 },
+];
+
+const itemsets = [
+  { name: 'Garlic Bread',        sup: 0.37 },
+  { name: 'Coke',                sup: 0.35 },
+  { name: 'Burger',              sup: 0.34 },
+  { name: 'Fries',               sup: 0.33 },
+  { name: 'Pizza',               sup: 0.33 },
+  { name: 'Pizza + Garlic Bread',sup: 0.27 },
+  { name: 'Burger + Fries',      sup: 0.20 },
+  { name: 'Burger + Coke',       sup: 0.19 },
+  { name: 'Pepsi',               sup: 0.18 },
+  { name: 'Milkshake',           sup: 0.18 },
+  { name: 'Coke + Fries',        sup: 0.17 },
+  { name: 'Sandwich',            sup: 0.16 },
+  { name: 'Pasta',               sup: 0.15 },
+  { name: 'Ice Cream',           sup: 0.15 },
+];
+
+// ── RENDER BAR CHART ──
+const barChart = document.getElementById('barChart');
+const maxCount = Math.max(...items.map(i => i.count));
+items.forEach(item => {
+  const pct = ((item.count / maxCount) * 100).toFixed(0);
+  barChart.innerHTML += `
+    <div class="bar-row">
+      <div class="bar-label">${item.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:0%; background:${item.color};" data-target="${pct}">
+          <span class="bar-val">${item.count}</span>
+        </div>
+      </div>
+    </div>`;
+});
+
+// ── RENDER RULES ──
+const rulesList = document.getElementById('rulesList');
+rules.forEach((r, i) => {
+  rulesList.innerHTML += `
+    <div class="rule-row" style="animation-delay:${i * 0.06}s">
+      <div class="rule-item">${r.ant}</div>
+      <div class="rule-arrow">→</div>
+      <div class="rule-item">${r.cons}</div>
+      <span class="badge badge-sup">Sup ${(r.sup*100).toFixed(0)}%</span>
+      <span class="badge badge-conf">Conf ${(r.conf*100).toFixed(0)}%</span>
+      <span class="badge badge-lift">Lift ${r.lift.toFixed(2)}</span>
+    </div>`;
+});
+
+// ── RENDER ITEMSETS ──
+const grid = document.getElementById('itemsetGrid');
+itemsets.forEach(it => {
+  grid.innerHTML += `
+    <div class="itemset-chip">
+      <div class="chip-name">${it.name}</div>
+      <div class="chip-bar-wrap">
+        <div class="chip-bar" style="width:0%" data-target="${(it.sup*100).toFixed(0)}"></div>
+      </div>
+      <div class="chip-pct">${(it.sup*100).toFixed(0)}%</div>
+    </div>`;
+});
+
+// ── ANIMATE BARS ON LOAD ──
+setTimeout(() => {
+  document.querySelectorAll('[data-target]').forEach(el => {
+    el.style.width = el.dataset.target + '%';
+  });
+}, 200);
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+Itemset,Support
+Garlic Bread,37.0%
+Coke,35.0%
+Burger,34.0%
+Fries,33.0%
+Pizza,33.0%
+"Garlic Bread, Pizza",27.0%
+"Burger, Fries",20.0%
+"Burger, Coke",19.0%
+Pepsi,18.0%
+Milkshake,18.0%
+"Coke, Fries",17.0%
+Sandwich,16.0%
+Pasta,15.0%
+Ice Cream,15.0%
