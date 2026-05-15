@@ -1,7 +1,7 @@
 streamlit
-pdfplumber
+pandas
+matplotlib
+seaborn
 google-genai
 python-dotenv
 markdown
-fpdf2
-matplotlib
