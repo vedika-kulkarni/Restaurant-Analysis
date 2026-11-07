@@ -7,6 +7,9 @@ The project analyzes transactional ordering behavior to generate actionable busi
 ---
 ## Live Demo
 https://restaurant-analysis-zrtpanv9bctyngopevhu5g.streamlit.app/
+<img width="1439" height="806" alt="image" src="https://github.com/user-attachments/assets/968439a8-4069-4b1d-8ea2-3a0d862ebf6d" />
+<img width="1454" height="806" alt="image" src="https://github.com/user-attachments/assets/41542527-a10f-478d-8a8b-573a527e1b5a" />
+
 
 # Problem Statement
 
